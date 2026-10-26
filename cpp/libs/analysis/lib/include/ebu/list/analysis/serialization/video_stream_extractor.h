@@ -23,5 +23,7 @@ namespace ebu_list::analysis
         const path base_dir_;
         executor_ptr main_executor_;
         const media::video::video_dimensions frame_size_;
+        const media::video::video_sampling sampling_;
+        const int color_depth_;
     };
 } // namespace ebu_list::analysis

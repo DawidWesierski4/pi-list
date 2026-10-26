@@ -36,6 +36,7 @@ SCENARIO("ST2110-20 heuristics")
                 REQUIRE(video_details.dimensions.width == 1920);
                 REQUIRE(video_details.dimensions.height == 1080);
                 REQUIRE(video_details.sampling == video::video_sampling::YCbCr_4_2_2);
+                REQUIRE(video_details.color_depth == 10);
             }
         }
     }
@@ -63,6 +64,7 @@ SCENARIO("ST2110-20 heuristics")
                 REQUIRE(video_details.dimensions.width == 1280);
                 REQUIRE(video_details.dimensions.height == 720);
                 REQUIRE(video_details.sampling == video::video_sampling::YCbCr_4_2_2);
+                REQUIRE(video_details.color_depth == 10);
             }
         }
     }
@@ -90,6 +92,7 @@ SCENARIO("ST2110-20 heuristics")
                 REQUIRE(video_details.dimensions.width == 720);
                 REQUIRE(video_details.dimensions.height == 576);
                 REQUIRE(video_details.sampling == video::video_sampling::YCbCr_4_2_2);
+                REQUIRE(video_details.color_depth == 10);
             }
         }
     }

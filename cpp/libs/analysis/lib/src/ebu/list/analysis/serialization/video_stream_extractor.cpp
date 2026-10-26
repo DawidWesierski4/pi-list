@@ -33,7 +33,8 @@ video_stream_extractor::video_stream_extractor(rtp::packet first_packet, seriali
                                                video_stream_details details, path base_dir, executor_ptr main_executor)
     : video_stream_handler(decode_video::yes, std::move(first_packet), std::move(info), details,
                            [](const video_stream_handler&) {}),
-      base_dir_(std::move(base_dir)), main_executor_(std::move(main_executor)), frame_size_(get_frame_size(details))
+      base_dir_(std::move(base_dir)), main_executor_(std::move(main_executor)), frame_size_(get_frame_size(details)),
+      sampling_(details.video.sampling), color_depth_(details.video.color_depth)
 {
 }
 
@@ -59,14 +60,16 @@ void video_stream_extractor::on_frame_complete(frame_uptr&& f)
     struct png_write_info
     {
         media::video::video_dimensions frame_size;
+        media::video::video_sampling sampling;
+        int color_depth;
         oview data;
         path png_path;
     };
 
-    png_write_info wfi{frame_size_, oview(f->buffer), png_path};
+    png_write_info wfi{frame_size_, sampling_, color_depth_, oview(f->buffer), png_path};
 
     auto png_writer = [wfi]() mutable {
-        auto rgba = from_ycbcr422_to_rgba(wfi.data, wfi.frame_size);
+        auto rgba = to_rgba(wfi.data, wfi.frame_size, wfi.sampling, wfi.color_depth);
         write_png(rgba, wfi.frame_size, wfi.png_path);
     };
 

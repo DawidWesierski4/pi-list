@@ -37,6 +37,31 @@ namespace
 
         return {clip_8(r), clip_8(g), clip_8(b)};
     }
+
+    // Reads samples of `depth` bits from a big-endian bit stream and gives
+    // them as 8-bit values.
+    class sample_reader
+    {
+      public:
+        sample_reader(const byte* data, size_t size, int depth) : data_(data), size_bits_(size * 8), depth_(depth) {}
+
+        int next()
+        {
+            int value = 0;
+            for(int b = 0; b < depth_; ++b, ++bit_)
+            {
+                const auto bit = bit_ < size_bits_ ? (static_cast<int>(data_[bit_ / 8]) >> (7 - bit_ % 8)) & 1 : 0;
+                value          = (value << 1) | bit;
+            }
+            return value >> (depth_ - 8);
+        }
+
+      private:
+        const byte* data_;
+        size_t size_bits_;
+        int depth_;
+        size_t bit_ = 0;
+    };
 } // namespace
 
 oview analysis::from_ycbcr422_to_rgba(oview ycbcr422, media::video::video_dimensions dimensions)
@@ -144,4 +169,84 @@ oview analysis::from_ycbcr422_to_uyvy(oview ycbcr422, media::video::video_dimens
     }
 
     return oview(std::move(target), 0, uyvy_frame_size);
+}
+
+oview analysis::to_rgba(oview frame, media::video::video_dimensions dimensions, media::video::video_sampling sampling,
+                        int depth)
+{
+    using media::video::video_sampling;
+
+    const auto width           = dimensions.width;
+    const auto height          = dimensions.height;
+    const auto rgba_frame_size = height * width * 4;
+
+    auto converter = dimensions.height > 1080 ? ycbcr_to_rgb_rec2020 : ycbcr_to_rgb_rec709;
+
+    malloc_sbuffer_factory f;
+    auto target = f.get_buffer(rgba_frame_size);
+    auto output = target->begin();
+
+    sample_reader input(frame.view().data(), frame.view().size(), depth);
+
+    const auto write = [&](uint8_t r, uint8_t g, uint8_t b) {
+        output[0] = byte(r);
+        output[1] = byte(g);
+        output[2] = byte(b);
+        output[3] = byte(0xFF);
+        output += 4;
+    };
+
+    const auto pixels = static_cast<size_t>(width) * height;
+    for(size_t i = 0; i < pixels;)
+    {
+        switch(sampling)
+        {
+        case video_sampling::YCbCr_4_2_2: {
+            // Cb Y0 Cr Y1
+            const auto cb           = input.next();
+            const auto y0           = input.next();
+            const auto cr           = input.next();
+            const auto y1           = input.next();
+            const auto [r0, g0, b0] = converter(y0, cb, cr);
+            const auto [r1, g1, b1] = converter(y1, cb, cr);
+            write(r0, g0, b0);
+            write(r1, g1, b1);
+            i += 2;
+            break;
+        }
+        case video_sampling::YCbCr_4_4_4: {
+            // Cb Y Cr
+            const auto cb        = input.next();
+            const auto y         = input.next();
+            const auto cr        = input.next();
+            const auto [r, g, b] = converter(y, cb, cr);
+            write(r, g, b);
+            ++i;
+            break;
+        }
+        case video_sampling::YCbCr_4_2_0: {
+            // Y00 Y01 Y10 Y11 Cb Cr: show the four Y samples as gray.
+            for(int k = 0; k < 4; ++k)
+            {
+                const auto y = static_cast<uint8_t>(input.next());
+                write(y, y, y);
+            }
+            input.next();
+            input.next();
+            i += 4;
+            break;
+        }
+        default: {
+            // R G B
+            const auto r = static_cast<uint8_t>(input.next());
+            const auto g = static_cast<uint8_t>(input.next());
+            const auto b = static_cast<uint8_t>(input.next());
+            write(r, g, b);
+            ++i;
+            break;
+        }
+        }
+    }
+
+    return oview(std::move(target), 0, rgba_frame_size);
 }
