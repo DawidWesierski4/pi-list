@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ebu/list/core/types.h"
+#include <atomic>
 #include <future>
 
 namespace ebu_list
@@ -32,9 +33,13 @@ namespace ebu_list
         const T& target() const noexcept { return *target_; }
 
       private:
+        // done_ comes before runner_: members start in declaration order, and
+        // the task of runner_ reads done_ at once. Declared after runner_,
+        // done_ was not yet set, and a non-zero byte stopped the task before
+        // the first item (a pcap with no stream).
+        std::atomic<bool> done_{false};
         std::unique_ptr<T> target_;
         std::future<void> runner_;
-        bool done_ = false; // TODO: atomic?
 
         void loop()
         {
