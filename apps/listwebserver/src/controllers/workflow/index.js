@@ -8,7 +8,7 @@ import logger from '../../util/logger';
 import {
     mq
 } from '@bisect/bisect-core-ts-be';
-const moment = require('moment');
+const { isWorkflowExpired } = require('./isWorkflowExpired');
 const programArguments = require('../../util/programArguments');
 
 const activeWorkflows = [];
@@ -21,8 +21,7 @@ const activeWorkflowsTimeoutControl = () => {
 
     // How long is the workflow active without beeing updated?
     wfs.forEach((wf) => {
-        var maxValidWfDate = moment(wf.meta.times.lastUpdated).add(3, 'm').toDate();
-        if (maxValidWfDate < moment(Date.now())) {
+        if (isWorkflowExpired(wf.meta.times.lastUpdated, Date.now())) {
             let inputConfig = {
                 ids: [wf.id]
             };

@@ -15,6 +15,11 @@ node_modules/
 .history
 yarn.lock
 package-lock.json
+# The MTL image build (Media-Transport-Library-Devtools ebu-list/build_pi_list.sh)
+# installs from these two lockfiles: the build and the GUI from yarn.lock, the
+# server runtime from the npm lockfile that scripts/deploy/deploy.sh reads.
+!/yarn.lock
+!/apps/listwebserver/package-lock.json
 *.log
 apps/listwebserver/version.yml
 .user
