@@ -40,8 +40,18 @@ function resolvePath(requestPath) {
 }
 
 const server = http.createServer((req, res) => {
-  const pathname = url.parse(req.url).pathname || '/';
-  const requestedPath = resolvePath(pathname);
+  let requestedPath;
+  try {
+    const pathname = url.parse(req.url).pathname || '/';
+    requestedPath = resolvePath(pathname);
+  } catch (e) {
+    // A path that is not valid percent-encoding makes decodeURIComponent
+    // throw. Without this answer the error stops the process, and the GUI is
+    // gone until the container starts again.
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Bad Request');
+    return;
+  }
 
   fs.stat(requestedPath, (err, stats) => {
     if (!err && stats.isFile()) {
